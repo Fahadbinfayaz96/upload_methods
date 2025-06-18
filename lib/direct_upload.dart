@@ -10,7 +10,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:video_player/video_player.dart';
 
 /// A Flutter widget for handling direct video uploads to S3 using presigned URLs
-/// 
+///
 /// This screen allows users to:
 /// 1. Pick a video from their gallery
 /// 2. Generate a presigned URL from the backend
@@ -26,19 +26,19 @@ class DirectUploadScreen extends StatefulWidget {
 class _DirectUploadScreenState extends State<DirectUploadScreen> {
   /// The selected video file for upload
   File? _file;
-  
+
   /// Loading state indicator
   bool _isLoading = false;
-  
+
   /// Stream controller for upload progress updates (0.0 to 1.0)
   final BehaviorSubject<double> _progressSubject = BehaviorSubject.seeded(0.0);
-  
+
   /// Time taken for the upload operation
   Duration? _uploadDuration;
-  
+
   /// URL of the successfully uploaded video
   String? _uploadedVideoUrl;
-  
+
   /// Controller for video playback
   VideoPlayerController? _videoController;
 
@@ -72,11 +72,13 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
 
       // Step 2: Prepare upload metadata
       final extension = picked.path.split('.').last.toLowerCase();
-      final fileName = "uploads/${DateTime.now().millisecondsSinceEpoch}.$extension";
+      final fileName =
+          "uploads/${DateTime.now().millisecondsSinceEpoch}.$extension";
       final contentType = _getContentType(extension);
 
       // Step 3: Get presigned URL from backend
-      final presignedUrl = await getPresignedUrl(fileName, contentType: contentType);
+      final presignedUrl =
+          await getPresignedUrl(fileName, contentType: contentType);
       if (presignedUrl == null) throw 'Failed to get upload URL';
 
       // Step 4: Perform the upload
@@ -105,7 +107,7 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
   }
 
   /// Performs a simple PUT upload to the given presigned URL
-  /// 
+  ///
   /// @param url The presigned URL for direct upload
   /// @param contentType The MIME type of the video file
   /// @throws Exception if upload fails (non-200 response)
@@ -128,11 +130,12 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
   }
 
   /// Requests a presigned URL from the backend server
-  /// 
+  ///
   /// @param fileName The desired filename in S3
   /// @param contentType Optional MIME type for the file
   /// @return String? The presigned URL or null if request fails
-  Future<String?> getPresignedUrl(String fileName, {String? contentType}) async {
+  Future<String?> getPresignedUrl(String fileName,
+      {String? contentType}) async {
     try {
       final uri = Uri.parse('http://localhost:3000/generate-presigned-url')
           .replace(queryParameters: {
@@ -151,7 +154,7 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
   }
 
   /// Determines the appropriate Content-Type header based on file extension
-  /// 
+  ///
   /// @param extension The file extension (without dot)
   /// @return String The corresponding MIME type
   String _getContentType(String extension) {
@@ -181,11 +184,11 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
                   if (snapshot.hasError) {
                     return Text(
                       'Error: ${snapshot.error}',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error),
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
                     );
                   }
-      
+
                   final progress = snapshot.data ?? 0;
                   return Column(
                     children: [
@@ -206,14 +209,14 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
               ElevatedButton(
                 onPressed: pickAndUpload,
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 ),
                 child: const Text("Pick & Upload Video"),
               ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Video preview section
             if (_uploadedVideoUrl != null &&
                 _videoController != null &&
@@ -221,7 +224,7 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
               Column(
                 children: [
                   AspectRatio(
-                    aspectRatio:  7/7,
+                    aspectRatio: 7 / 7,
                     child: VideoPlayer(_videoController!),
                   ),
                   VideoProgressIndicator(_videoController!,
@@ -242,13 +245,22 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
                   ),
                 ],
               ),
-            
+
             // Upload metrics
-            if (_uploadDuration != null)
+            if (_file != null && _uploadDuration != null) ...[
               Text("Upload Time: ${_uploadDuration!.inMilliseconds} ms"),
-            
+              Text(
+                  "File Size: ${(_file!.lengthSync() / (1024 * 1024)).toStringAsFixed(2)} MB"),
+              if (_uploadDuration!.inMilliseconds > 0)
+                Text(
+                    "Speed: ${((_file!.lengthSync() * 8) / (_uploadDuration!.inMilliseconds / 1000) / 1024 / 1024).toStringAsFixed(2)} Mbps"),
+              Text(
+                "App Memory Usage: ${(ProcessInfo.currentRss / (1024 * 1024)).toStringAsFixed(2)} MB",
+              ),
+            ],
+
             const SizedBox(height: 20),
-            
+
             // Helper text
             Text(
               'This uses direct PUT upload. Best for small/medium files.',

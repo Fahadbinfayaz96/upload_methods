@@ -30,7 +30,11 @@
 <string>This app requires access to the local network.</string>
 <key>NSPhotoLibraryUsageDescription</key>
 <string>This app needs access to your photo library to select and upload videos.</string>
-
+<key>NSAppTransportSecurity</key>
+<dict>
+  <key>NSAllowsArbitraryLoads</key>
+  <true/>
+</dict>
 <key>NSBonjourServices</key>
 <array>
     <string>_dartobservatory._tcp</string>
