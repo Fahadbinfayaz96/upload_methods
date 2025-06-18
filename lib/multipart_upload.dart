@@ -5,19 +5,39 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
+/// A Flutter widget for handling video uploads with two different methods:
+/// 1. Multipart form upload (default)
+/// 2. Chunked streaming upload
+/// 
+/// Features:
+/// - Toggle between upload methods
+/// - Real-time progress tracking
+/// - Video preview after upload
+/// - Upload performance metrics
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
+
   @override
   State<UploadScreen> createState() => _UploadScreenState();
 }
 
 class _UploadScreenState extends State<UploadScreen> {
+  /// Current upload progress (0.0 to 1.0)
   double progress = 0.0;
+  
+  /// Flag indicating if an upload is in progress
   bool isUploading = false;
+  
+  /// Toggle between chunked and multipart upload
   bool useChunkedUpload = false;
+  
+  /// Path to the uploaded video file
   String? uploadedVideoPath;
+  
+  /// Time taken for upload in milliseconds
   int? uploadDurationMs;
 
+  /// Controller for video playback preview
   VideoPlayerController? _videoController;
 
   @override
@@ -26,7 +46,13 @@ class _UploadScreenState extends State<UploadScreen> {
     super.dispose();
   }
 
+  /// Main upload handler that:
+  /// 1. Selects video from gallery
+  /// 2. Configures Dio client
+  /// 3. Performs upload based on selected method
+  /// 4. Handles response and initializes video player
   Future<void> pickAndUpload() async {
+    // Step 1: Pick video from gallery
     final file = await ImagePicker().pickVideo(source: ImageSource.gallery);
     if (file == null) return;
 
@@ -45,58 +71,19 @@ class _UploadScreenState extends State<UploadScreen> {
 
     try {
       if (useChunkedUpload) {
-        final url = "http://000.000.0.00:3000/upload-chunked/$filename";
-        final totalBytes = File(filePath).lengthSync();
-        final fileStream = File(filePath).openRead();
-
-        final response = await dio.put(
-          url,
-          data: fileStream,
-          options: Options(headers: {
-            HttpHeaders.contentTypeHeader: "video/mp4",
-            HttpHeaders.contentLengthHeader: totalBytes,
-          }),
-          onSendProgress: (sent, total) {
-            setState(() => progress = sent / total);
-          },
-        );
-
-        if (response.statusCode == 200) {
-          _showToast("✅ Chunked Upload Successful");
-          uploadedVideoPath = filePath;
-        } else {
-          _showToast("Chunked Upload Failed");
-        }
+        // Chunked upload implementation
+        await _performChunkedUpload(dio, filename, filePath);
       } else {
-        final url = "http://000.000.0.00:3000/upload-multipart";
-        final formData = FormData.fromMap({
-          "file": await MultipartFile.fromFile(filePath, filename: filename),
-        });
-
-        final response = await dio.put(
-          url,
-          data: formData,
-          onSendProgress: (sent, total) {
-            setState(() => progress = sent / total);
-          },
-        );
-
-        if (response.statusCode == 200) {
-          _showToast("✅ Multipart Upload Successful");
-          uploadedVideoPath = filePath;
-        } else {
-          _showToast("Multipart Upload Failed");
-        }
+        // Multipart upload implementation
+        await _performMultipartUpload(dio, filename, filePath);
       }
 
+      // Initialize video player if upload succeeded
       if (uploadedVideoPath != null) {
-        _videoController?.dispose();
-        _videoController = VideoPlayerController.file(File(uploadedVideoPath!));
-        await _videoController!.initialize();
-        setState(() {});
+        await _initializeVideoPlayer();
       }
     } catch (e) {
-      _showToast(" Upload error: $e");
+      _showToast("Upload error: $e");
       log("Upload error: $e");
     } finally {
       stopwatch.stop();
@@ -107,6 +94,74 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
+  /// Performs chunked streaming upload
+  /// 
+  /// @param dio The Dio client instance
+  /// @param filename Name of the file to upload
+  /// @param filePath Local path to the video file
+  Future<void> _performChunkedUpload(
+      Dio dio, String filename, String filePath) async {
+    final url = "http://000.000.0.00:3000/upload-chunked/$filename";
+    final totalBytes = File(filePath).lengthSync();
+    final fileStream = File(filePath).openRead();
+
+    final response = await dio.put(
+      url,
+      data: fileStream,
+      options: Options(headers: {
+        HttpHeaders.contentTypeHeader: "video/mp4",
+        HttpHeaders.contentLengthHeader: totalBytes,
+      }),
+      onSendProgress: (sent, total) {
+        setState(() => progress = sent / total);
+      },
+    );
+
+    if (response.statusCode == 200) {
+      _showToast("✅ Chunked Upload Successful");
+      uploadedVideoPath = filePath;
+    } else {
+      _showToast("Chunked Upload Failed");
+    }
+  }
+
+  /// Performs multipart form upload
+  /// 
+  /// @param dio The Dio client instance
+  /// @param filename Name of the file to upload
+  /// @param filePath Local path to the video file
+  Future<void> _performMultipartUpload(
+      Dio dio, String filename, String filePath) async {
+    final url = "http://000.000.0.00:3000/upload-multipart";
+    final formData = FormData.fromMap({
+      "file": await MultipartFile.fromFile(filePath, filename: filename),
+    });
+
+    final response = await dio.put(
+      url,
+      data: formData,
+      onSendProgress: (sent, total) {
+        setState(() => progress = sent / total);
+      },
+    );
+
+    if (response.statusCode == 200) {
+      _showToast("✅ Multipart Upload Successful");
+      uploadedVideoPath = filePath;
+    } else {
+      _showToast("Multipart Upload Failed");
+    }
+  }
+
+  /// Initializes the video player controller with the uploaded file
+  Future<void> _initializeVideoPlayer() async {
+    _videoController?.dispose();
+    _videoController = VideoPlayerController.file(File(uploadedVideoPath!));
+    await _videoController!.initialize();
+    setState(() {});
+  }
+
+  /// Displays a snackbar with the given message
   void _showToast(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
@@ -116,13 +171,12 @@ class _UploadScreenState extends State<UploadScreen> {
     final progressPercent = (progress * 100).toStringAsFixed(1);
 
     return Scaffold(
-    
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: SingleChildScrollView(
           child: Column(
-           
             children: [
+              // Upload method toggle
               SwitchListTile(
                 title: Text(useChunkedUpload
                     ? "Chunked Upload Enabled"
@@ -130,11 +184,16 @@ class _UploadScreenState extends State<UploadScreen> {
                 value: useChunkedUpload,
                 onChanged: (val) => setState(() => useChunkedUpload = val),
               ),
+              
+              // Upload button
               ElevatedButton(
                 onPressed: isUploading ? null : pickAndUpload,
                 child: const Text("Pick & Upload Video"),
               ),
+              
               const SizedBox(height: 20),
+              
+              // Progress indicator
               if (isUploading)
                 Column(
                   children: [
@@ -143,6 +202,8 @@ class _UploadScreenState extends State<UploadScreen> {
                     Text("Progress: $progressPercent%"),
                   ],
                 ),
+              
+              // Video preview section
               if (uploadedVideoPath != null &&
                   _videoController != null &&
                   _videoController!.value.isInitialized)
@@ -169,6 +230,8 @@ class _UploadScreenState extends State<UploadScreen> {
                     ),
                   ],
                 ),
+              
+              // Upload metrics
               if (uploadDurationMs != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 20),

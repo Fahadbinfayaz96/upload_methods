@@ -9,6 +9,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:video_player/video_player.dart';
 
+/// A Flutter widget for handling direct video uploads to S3 using presigned URLs
+/// 
+/// This screen allows users to:
+/// 1. Pick a video from their gallery
+/// 2. Generate a presigned URL from the backend
+/// 3. Upload the video directly to S3 storage
+/// 4. Preview the uploaded video with playback controls
 class DirectUploadScreen extends StatefulWidget {
   const DirectUploadScreen({super.key});
 
@@ -17,12 +24,22 @@ class DirectUploadScreen extends StatefulWidget {
 }
 
 class _DirectUploadScreenState extends State<DirectUploadScreen> {
+  /// The selected video file for upload
   File? _file;
+  
+  /// Loading state indicator
   bool _isLoading = false;
+  
+  /// Stream controller for upload progress updates (0.0 to 1.0)
   final BehaviorSubject<double> _progressSubject = BehaviorSubject.seeded(0.0);
+  
+  /// Time taken for the upload operation
   Duration? _uploadDuration;
-
+  
+  /// URL of the successfully uploaded video
   String? _uploadedVideoUrl;
+  
+  /// Controller for video playback
   VideoPlayerController? _videoController;
 
   @override
@@ -32,8 +49,15 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
     super.dispose();
   }
 
+  /// Main function that handles the complete upload flow:
+  /// 1. Picks a video from gallery
+  /// 2. Prepares upload metadata
+  /// 3. Gets presigned URL
+  /// 4. Performs the upload
+  /// 5. Initializes video playback
   Future<void> pickAndUpload() async {
     try {
+      // Step 1: Pick video from gallery
       final picked = await ImagePicker().pickVideo(source: ImageSource.gallery);
       if (picked == null) return;
 
@@ -46,18 +70,20 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
       _progressSubject.add(0.0);
       _file = File(picked.path);
 
+      // Step 2: Prepare upload metadata
       final extension = picked.path.split('.').last.toLowerCase();
-      final fileName =
-          "uploads/${DateTime.now().millisecondsSinceEpoch}.$extension";
+      final fileName = "uploads/${DateTime.now().millisecondsSinceEpoch}.$extension";
       final contentType = _getContentType(extension);
 
-      final presignedUrl =
-          await getPresignedUrl(fileName, contentType: contentType);
+      // Step 3: Get presigned URL from backend
+      final presignedUrl = await getPresignedUrl(fileName, contentType: contentType);
       if (presignedUrl == null) throw 'Failed to get upload URL';
 
+      // Step 4: Perform the upload
       await _simplePutUpload(presignedUrl, contentType);
       _progressSubject.add(1.0);
 
+      // Step 5: Initialize video player for preview
       _uploadedVideoUrl = presignedUrl;
       _videoController = VideoPlayerController.network(_uploadedVideoUrl!)
         ..initialize().then((_) {
@@ -78,6 +104,11 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
     }
   }
 
+  /// Performs a simple PUT upload to the given presigned URL
+  /// 
+  /// @param url The presigned URL for direct upload
+  /// @param contentType The MIME type of the video file
+  /// @throws Exception if upload fails (non-200 response)
   Future<void> _simplePutUpload(String url, String contentType) async {
     final stopwatch = Stopwatch()..start();
     final response = await http.put(
@@ -96,8 +127,12 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
     }
   }
 
-  Future<String?> getPresignedUrl(String fileName,
-      {String? contentType}) async {
+  /// Requests a presigned URL from the backend server
+  /// 
+  /// @param fileName The desired filename in S3
+  /// @param contentType Optional MIME type for the file
+  /// @return String? The presigned URL or null if request fails
+  Future<String?> getPresignedUrl(String fileName, {String? contentType}) async {
     try {
       final uri = Uri.parse('http://localhost:3000/generate-presigned-url')
           .replace(queryParameters: {
@@ -115,6 +150,10 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
     }
   }
 
+  /// Determines the appropriate Content-Type header based on file extension
+  /// 
+  /// @param extension The file extension (without dot)
+  /// @return String The corresponding MIME type
   String _getContentType(String extension) {
     switch (extension) {
       case 'mov':
@@ -129,12 +168,11 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-    
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
-        
           children: [
+            // Upload progress indicator
             if (_isLoading) ...[
               const SizedBox(height: 20),
               StreamBuilder<double>(
@@ -164,6 +202,7 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
                 },
               ),
             ] else
+              // Upload button
               ElevatedButton(
                 onPressed: pickAndUpload,
                 style: ElevatedButton.styleFrom(
@@ -172,7 +211,10 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
                 ),
                 child: const Text("Pick & Upload Video"),
               ),
+            
             const SizedBox(height: 20),
+            
+            // Video preview section
             if (_uploadedVideoUrl != null &&
                 _videoController != null &&
                 _videoController!.value.isInitialized)
@@ -200,9 +242,14 @@ class _DirectUploadScreenState extends State<DirectUploadScreen> {
                   ),
                 ],
               ),
+            
+            // Upload metrics
             if (_uploadDuration != null)
               Text("Upload Time: ${_uploadDuration!.inMilliseconds} ms"),
+            
             const SizedBox(height: 20),
+            
+            // Helper text
             Text(
               'This uses direct PUT upload. Best for small/medium files.',
               textAlign: TextAlign.center,
