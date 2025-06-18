@@ -45,7 +45,7 @@ class _UploadScreenState extends State<UploadScreen> {
 
     try {
       if (useChunkedUpload) {
-        final url = "http://192.168.1.17:3000/upload-chunked/$filename";
+        final url = "http://000.000.0.00:3000/upload-chunked/$filename";
         final totalBytes = File(filePath).lengthSync();
         final fileStream = File(filePath).openRead();
 
@@ -68,7 +68,7 @@ class _UploadScreenState extends State<UploadScreen> {
           _showToast("Chunked Upload Failed");
         }
       } else {
-        final url = "http://192.168.1.17:3000/upload-multipart";
+        final url = "http://000.000.0.00:3000/upload-multipart";
         final formData = FormData.fromMap({
           "file": await MultipartFile.fromFile(filePath, filename: filename),
         });
