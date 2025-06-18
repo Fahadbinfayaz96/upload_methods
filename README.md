@@ -40,7 +40,7 @@ dependencies:
   dio: ^5.8.0+1
   rxdart: ^0.28.0
   video_player: ^2.9.5
-
+```
 
 ## Demo Videos
 
