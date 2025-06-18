@@ -21,10 +21,10 @@ This Flutter project demonstrates **three different file upload techniques** for
 
 ## 📁 Folder Structure
 
-lib/ 
-├── main.dart # App entry with TabBar navigation 
-├── multipart_upload.dart # Combined Multipart & Chunked Upload UI 
-└── direct_upload.dart # Pre-signed URL Direct PUT UI
+lib
+---> main.dart # App entry with TabBar navigation 
+---> multipart_upload.dart # Combined Multipart & Chunked Upload UI 
+---> direct_upload.dart # Pre-signed URL Direct PUT UI
 
 ---
 
