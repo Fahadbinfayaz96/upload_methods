@@ -42,9 +42,8 @@ dependencies:
   video_player: ^2.9.5
 
 
-## Demo Videos
-
-- [Direct Upload](https://jam.dev/c/72b067db-19c8-4ca4-8b3a-767607b455f6)
-- [Multipart and Chunked](https://jam.dev/c/ce165fd1-ea8f-41bb-b8f2-d1b2b08e6b2d)
+Demo Videos
+. Direct Upload
+. Multipart and Chunked
 
 
