@@ -101,7 +101,7 @@ class _UploadScreenState extends State<UploadScreen> {
   /// @param filePath Local path to the video file
   Future<void> _performChunkedUpload(
       Dio dio, String filename, String filePath) async {
-    final url = "http://192.168.1.17:3000/upload-chunked/$filename";
+    final url = "http://000.000.0.00:3000/upload-chunked/$filename";
     final totalBytes = File(filePath).lengthSync();
     final fileStream = File(filePath).openRead();
 
@@ -132,7 +132,7 @@ class _UploadScreenState extends State<UploadScreen> {
   /// @param filePath Local path to the video file
   Future<void> _performMultipartUpload(
       Dio dio, String filename, String filePath) async {
-    final url = "http://192.168.1.17:3000/upload-multipart";
+    final url = "http://000.000.0.00:3000/upload-multipart";
     final formData = FormData.fromMap({
       "file": await MultipartFile.fromFile(filePath, filename: filename),
     });
